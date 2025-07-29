@@ -21,6 +21,6 @@ llm = ChatOpenAI(
 ).bind_tools(tools)
 
 
-if __name__ == "__main__":
-    print("This script is intended to be imported as a module, not run directly.")
-    print(os.getenv("OPENAPI_KEY", "Default Value"))
+# if __name__ == "__main__":
+#     print("This script is intended to be imported as a module, not run directly.")
+#     print(os.getenv("OPENAPI_KEY", "Default Value"))
