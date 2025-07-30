@@ -1,26 +1,39 @@
+from tkinter import END
 from dotenv import load_dotenv
 import os
-from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
-from langchain_tavily import TavilySearch
-
+from langchain_core.messages import HumanMessage
+from langgraph.graph import MessagesState, StateGraph
+from nodes import run_agent_reasoning, tool_node
 
 load_dotenv()
 
-@tool
-def triple(x: int) -> int:
-    """Return the triple of x."""
-    return 3 * x
-
-tools = [TavilySearch(max_results=1), triple]
-
-llm = ChatOpenAI(
-    model="gpt-4o",
-    temperature=0.0,
-    api_key=os.getenv("OPENAPI_KEY")
-).bind_tools(tools)
+AGENT_REASON="agent_reason"
+ACT="act"
+END="__end__"
+LAST=-1
 
 
-# if __name__ == "__main__":
-#     print("This script is intended to be imported as a module, not run directly.")
-#     print(os.getenv("OPENAPI_KEY", "Default Value"))
+def should_continue(state:MessagesState) -> str:
+    if not state["messages"][LAST].tool_calls:
+        return END
+    return ACT
+
+flow = StateGraph(MessagesState)
+flow.add_node(AGENT_REASON, run_agent_reasoning)
+flow.set_entry_point(AGENT_REASON)
+flow.add_node(ACT,tool_node)
+flow.add_conditional_edges(AGENT_REASON, should_continue, {
+    END:END,
+    ACT:ACT
+})
+
+flow.add_edge(ACT, AGENT_REASON)
+
+app= flow.compile()
+app.get_graph().draw_mermaid_png(output_file_path="flow.png")
+
+
+if __name__=="__main__":
+    print("Hello ReAct Message!")
+    res = app.invoke({"messages": [HumanMessage(content="What is the weather temperature in Richmond, texas? List it and triple it")]})
+    print(res["messages"][LAST].content)
